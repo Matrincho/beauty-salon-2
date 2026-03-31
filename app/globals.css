@@ -1,0 +1,179 @@
+@charset "UTF-8";
+
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   QUIET LUXURY DESIGN TOKENS — Maison Élite
+   Palette: Alabaster · Deep Charcoal · Champagne Gold · Warm Stone
+   ============================================================ */
+
+:root {
+  /* --- Brand Colors --- */
+  --color-alabaster:    #F9F8F6;
+  --color-charcoal:     #1A1A1B;
+  --color-charcoal-deep:#0F0F10;
+  --color-gold:         #D4AF37;
+  --color-gold-muted:   rgba(212, 175, 55, 0.6);
+  --color-stone:        #8C8074;
+
+  /* --- Semantic Tokens --- */
+  --background:         #F9F8F6;
+  --foreground:         #1A1A1B;
+  --card:               #FFFFFF;
+  --card-foreground:    #1A1A1B;
+  --popover:            #FFFFFF;
+  --popover-foreground: #1A1A1B;
+  --primary:            #1A1A1B;
+  --primary-foreground: #F9F8F6;
+  --secondary:          #F0EDE8;
+  --secondary-foreground:#1A1A1B;
+  --muted:              #F0EDE8;
+  --muted-foreground:   #8C8074;
+  --accent:             #D4AF37;
+  --accent-foreground:  #1A1A1B;
+  --destructive:        oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --border:             #E5E0D8;
+  --input:              #E5E0D8;
+  --ring:               #D4AF37;
+  --radius:             0.25rem;
+
+  /* --- Sidebar (keep shadcn compat) --- */
+  --sidebar:            #F9F8F6;
+  --sidebar-foreground: #1A1A1B;
+  --sidebar-primary:    #1A1A1B;
+  --sidebar-primary-foreground: #F9F8F6;
+  --sidebar-accent:     #F0EDE8;
+  --sidebar-accent-foreground:  #1A1A1B;
+  --sidebar-border:     #E5E0D8;
+  --sidebar-ring:       #D4AF37;
+}
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback';
+  --font-serif: 'Playfair Display', 'Georgia', serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+
+  /* Map semantic tokens to Tailwind utilities */
+  --color-background:         var(--background);
+  --color-foreground:         var(--foreground);
+  --color-card:               var(--card);
+  --color-card-foreground:    var(--card-foreground);
+  --color-popover:            var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary:            var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary:          var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:              var(--muted);
+  --color-muted-foreground:   var(--muted-foreground);
+  --color-accent:             var(--accent);
+  --color-accent-foreground:  var(--accent-foreground);
+  --color-destructive:        var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border:             var(--border);
+  --color-input:              var(--input);
+  --color-ring:               var(--ring);
+  --radius-sm:                calc(var(--radius) - 2px);
+  --radius-md:                var(--radius);
+  --radius-lg:                calc(var(--radius) + 4px);
+  --radius-xl:                calc(var(--radius) + 8px);
+  --color-sidebar:            var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary:    var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:     var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border:     var(--sidebar-border);
+  --color-sidebar-ring:       var(--sidebar-ring);
+
+  /* Brand color utilities */
+  --color-alabaster:    var(--color-alabaster);
+  --color-charcoal:     var(--color-charcoal);
+  --color-charcoal-deep:var(--color-charcoal-deep);
+  --color-gold:         var(--color-gold);
+  --color-stone:        var(--color-stone);
+}
+
+/* ============================================================
+   SCROLL-REVEAL ANIMATIONS (CSS only — no Framer Motion needed)
+   ============================================================ */
+
+/* Scroll margin for anchor links (accounts for fixed header) */
+.scroll-margin-top-20 {
+  scroll-margin-top: 5rem;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.8s ease both;
+}
+
+/* Stagger delay utilities */
+.delay-100 { animation-delay: 0.1s; }
+.delay-150 { animation-delay: 0.15s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+
+/* Scroll-triggered: elements start hidden, JS adds .is-visible */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-fade {
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+
+.reveal-fade.is-visible {
+  opacity: 1;
+}
+
+/* ============================================================
+   GLOBAL BASE
+   ============================================================ */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+
