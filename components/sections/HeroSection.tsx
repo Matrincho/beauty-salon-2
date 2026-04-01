@@ -14,7 +14,7 @@ export default function HeroSection() {
   return (
     <section
       id="home"
-      className="relative min-h-[600px] flex items-center bg-[#F9F8F6] pt-24 md:pt-20"
+      className="relative min-h-screen flex items-center bg-[#F9F8F6] pt-24 md:pt-20"
       aria-label="Hero"
     >
       <div className="max-w-7xl mx-auto px-6 md:px-10 w-full py-10 md:py-14">

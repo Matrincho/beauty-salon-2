@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { Instagram } from 'lucide-react'
-import CtaButton from '@/components/ui/CtaButton'
 import { useLanguage } from '@/lib/i18n/LanguageContext'
 import { translations as tr, t } from '@/lib/i18n/translations'
 
@@ -26,26 +25,6 @@ export default function Footer() {
     <footer className="bg-[#1A1A1B]" aria-label="Site footer">
       {/* Gold top rule */}
       <div className="border-t border-[#D4AF37]" />
-
-      {/* Tier 1 — Concierge CTA bar */}
-      <div className="max-w-7xl mx-auto px-6 md:px-10 py-12 md:py-16">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="flex flex-col gap-2 max-w-md">
-            <h3 className="font-serif text-xl md:text-2xl text-[#F9F8F6]">
-              {t(tr.footer.conciergeHeading, locale)}
-            </h3>
-            <p className="font-sans text-sm leading-relaxed text-[#8C8074]">
-              {t(tr.footer.conciergeBody, locale)}
-            </p>
-          </div>
-          <CtaButton
-            label={t(tr.cta.textConcierge, locale)}
-            variant="outline-gold"
-            size="md"
-            href="sms:+35900000000"
-          />
-        </div>
-      </div>
 
       {/* Tier 2 — Link columns */}
       <div className="border-t border-[#F9F8F6]/10">

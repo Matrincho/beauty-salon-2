@@ -1,18 +1,21 @@
 'use client'
 
-import Link from 'next/link'
+import { useState } from 'react'
+import { Mail, MapPin, Phone, Copy, Check } from 'lucide-react'
 import CtaButton from '@/components/ui/CtaButton'
 import Footer from '@/components/footer/Footer'
+import SubpageHeader from '@/components/navigation/SubpageHeader'
 import { useLanguage } from '@/lib/i18n/LanguageContext'
 import { translations as tr, t } from '@/lib/i18n/translations'
 
 export default function ContactPage() {
   const { locale } = useLanguage()
+  const [copied, setCopied] = useState(false)
 
   const contactDetails = [
-    { label: t(tr.contact.phoneLabel,   locale), value: '+359 2 900 1234',        href: 'tel:+35929001234' },
-    { label: t(tr.contact.emailLabel,   locale), value: 'hello@maisonelite.bg',   href: 'mailto:hello@maisonelite.bg' },
-    { label: t(tr.contact.addressLabel, locale), value: t(tr.contact.mapAddress, locale), href: 'https://maps.google.com' },
+    { label: t(tr.contact.phoneLabel, locale), value: '+359 2 900 1234', href: 'tel:+35929001234', icon: Phone },
+    { label: t(tr.contact.emailLabel, locale), value: 'hello@maisonelite.bg', href: 'mailto:hello@maisonelite.bg', icon: Mail },
+    { label: t(tr.contact.addressLabel, locale), value: t(tr.contact.mapAddress, locale), href: 'https://maps.google.com/?q=Sofia+Center', icon: MapPin },
   ]
 
   const hours = [
@@ -23,26 +26,7 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-[#F9F8F6]">
-      {/* Header bar */}
-      <div className="border-b border-[#E5E0D8]">
-        <div className="relative max-w-7xl mx-auto px-6 md:px-10 h-16 flex items-center justify-between gap-4">
-          <Link
-            href="/"
-            className="font-sans text-xs uppercase tracking-widest text-[#8C8074] hover:text-[#D4AF37] transition-colors duration-200 shrink-0 flex items-center gap-2 absolute left-4 md:relative md:left-auto top-1/2 -translate-y-1/2 md:top-auto md:-translate-y-0"
-          >
-            <span aria-hidden="true">&larr;</span> {t(tr.subpage.home, locale)}
-          </Link>
-          <Link
-            href="/"
-            className="font-serif text-base tracking-[0.15em] text-[#1A1A1B] uppercase hover:text-[#D4AF37] transition-colors duration-300 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 md:top-auto md:left-auto md:relative md:transform-none"
-          >
-            Maison Élite
-          </Link>
-          <div className="hidden md:flex">
-            <CtaButton size="sm" label={t(tr.cta.bookNow, locale)} />
-          </div>
-        </div>
-      </div>
+      <SubpageHeader />
 
       {/* Page content */}
       <main className="max-w-7xl mx-auto px-6 md:px-10 py-20 md:py-28">
@@ -65,9 +49,10 @@ export default function ContactPage() {
 
             {/* Contact details */}
             <div className="flex flex-col gap-6">
-              {contactDetails.map(({ label, value, href }) => (
+              {contactDetails.map(({ label, value, href, icon: Icon }) => (
                 <div key={label} className="flex flex-col gap-1 border-b border-[#E5E0D8] pb-6">
-                  <span className="font-sans text-xs uppercase tracking-widest text-[#8C8074]">
+                  <span className="font-sans text-xs uppercase tracking-widest text-[#8C8074] inline-flex items-center gap-2">
+                    <Icon size={14} aria-hidden="true" />
                     {label}
                   </span>
                   <a
@@ -80,6 +65,25 @@ export default function ContactPage() {
                   </a>
                 </div>
               ))}
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText('hello@maisonelite.bg')
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 1500)
+                  } catch {
+                    setCopied(false)
+                  }
+                }}
+                className="min-h-[44px] inline-flex items-center gap-2 font-sans text-xs uppercase tracking-widest text-[#1A1A1B] border border-[#E5E0D8] px-4 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors duration-200"
+                aria-label={locale === 'bg' ? 'Копирай имейл адрес' : 'Copy email address'}
+              >
+                {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+                {copied ? (locale === 'bg' ? 'Копирано' : 'Copied') : (locale === 'bg' ? 'Копирай имейл' : 'Copy email')}
+              </button>
             </div>
 
             {/* Hours */}
@@ -105,22 +109,15 @@ export default function ContactPage() {
 
           {/* Right — map placeholder + booking nudge */}
           <div className="flex flex-col gap-8">
-            {/* Map placeholder */}
-            <div className="relative w-full aspect-[4/3] bg-[#F0EDE8] border border-[#E5E0D8] flex items-center justify-center">
-              <div className="flex flex-col items-center gap-3 text-center px-8">
-                <div className="w-8 h-px bg-[#D4AF37]" />
-                <p className="font-sans text-xs uppercase tracking-widest text-[#8C8074]">
-                  {t(tr.contact.mapAddress, locale)}
-                </p>
-                <a
-                  href="https://maps.google.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-sans text-xs uppercase tracking-widest text-[#D4AF37] border-b border-[#D4AF37]/40 pb-0.5 hover:border-[#D4AF37] transition-colors duration-200"
-                >
-                  {t(tr.contact.openInMaps, locale)}
-                </a>
-              </div>
+            {/* Embedded map */}
+            <div className="relative w-full aspect-[4/3] bg-[#F0EDE8] border border-[#E5E0D8]">
+              <iframe
+                title={locale === 'bg' ? 'Карта на салона' : 'Salon map'}
+                src="https://www.google.com/maps?q=Sofia%20Center&output=embed"
+                className="w-full h-full"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
             </div>
 
             {/* Booking nudge */}

@@ -53,9 +53,9 @@
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
-  --font-serif: 'Playfair Display', 'Georgia', serif;
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-sans: var(--font-geist-sans), 'Geist', 'Geist Fallback', sans-serif;
+  --font-serif: var(--font-playfair-display), 'Playfair Display', 'Georgia', serif;
+  --font-mono: var(--font-geist-mono), 'Geist Mono', 'Geist Mono Fallback', monospace;
 
   /* Map semantic tokens to Tailwind utilities */
   --color-background:         var(--background);
@@ -158,6 +158,29 @@
 
 .reveal-fade.is-visible {
   opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .delay-100,
+  .delay-150,
+  .delay-200,
+  .delay-300,
+  .delay-400,
+  .reveal,
+  .reveal.is-visible,
+  .reveal-fade,
+  .reveal-fade.is-visible {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
 }
 
 /* ============================================================

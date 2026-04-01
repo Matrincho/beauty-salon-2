@@ -32,7 +32,7 @@ export default function GallerySection() {
   return (
     <section
       id="gallery"
-      className="bg-[#F0EDE8] py-24 md:py-32 lg:py-40"
+      className="bg-[#F0EDE8] pt-12 md:pt-16 pb-24 md:pb-32 lg:pb-40 scroll-mt-16 md:scroll-mt-20"
       aria-label={t(tr.gallery.label, locale)}
     >
       <div className="max-w-7xl mx-auto px-6 md:px-10">

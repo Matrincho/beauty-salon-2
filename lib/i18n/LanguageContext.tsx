@@ -26,24 +26,22 @@ const LanguageContext = createContext<LanguageContextValue>({
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE)
-  const [isMounted, setIsMounted] = useState(false)
 
-  // Hydration Shield: Initialize from localStorage on mount
+  // Initialize locale from localStorage after mount.
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY) as Locale | null
       if (stored === 'bg' || stored === 'en') {
         setLocale(stored)
-        document.documentElement.lang = stored
-      } else {
-        document.documentElement.lang = DEFAULT_LOCALE
       }
     } catch {
-      // localStorage unavailable, use default
-      document.documentElement.lang = DEFAULT_LOCALE
+      // localStorage unavailable, keep default locale
     }
-    setIsMounted(true)
   }, [])
+
+  useEffect(() => {
+    document.documentElement.lang = locale
+  }, [locale])
 
   const toggleLocale = useCallback(() => {
     setLocale((prev) => {
@@ -62,11 +60,6 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     () => ({ locale, toggleLocale }),
     [locale, toggleLocale]
   )
-
-  // Return null during SSR/initial hydration, render after client mount
-  if (!isMounted) {
-    return null
-  }
 
   return (
     <LanguageContext.Provider value={contextValue}>

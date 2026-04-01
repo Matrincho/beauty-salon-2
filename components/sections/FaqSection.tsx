@@ -81,7 +81,7 @@ export default function FaqSection() {
   return (
     <section
       id="faq"
-      className="py-24 md:py-32 bg-[#F9F8F6]"
+      className="pt-12 md:pt-16 pb-24 md:pb-32 bg-[#F9F8F6] scroll-mt-16 md:scroll-mt-20"
       aria-label={t(tr.faq.label, locale)}
     >
       <div className="max-w-5xl mx-auto px-6 md:px-10">

@@ -10,6 +10,7 @@ import { translations as tr, t } from '@/lib/i18n/translations'
 
 export default function TestimonialsSection() {
   const { locale } = useLanguage()
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
 
   const testimonials = [
     { quote: t(tr.testimonials.t1quote, locale), name: t(tr.testimonials.t1name, locale), title: t(tr.testimonials.t1title, locale) },
@@ -48,15 +49,27 @@ export default function TestimonialsSection() {
   }, [emblaApi, updateButtons])
 
   useEffect(() => {
-    if (isPaused || !emblaApi) return
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setPrefersReducedMotion(mediaQuery.matches)
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      setPrefersReducedMotion(event.matches)
+    }
+
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
+
+  useEffect(() => {
+    if (isPaused || !emblaApi || prefersReducedMotion) return
     autoPlayRef.current = setInterval(() => emblaApi.scrollNext(), 4000)
     return () => { if (autoPlayRef.current) clearInterval(autoPlayRef.current) }
-  }, [emblaApi, isPaused])
+  }, [emblaApi, isPaused, prefersReducedMotion])
 
   return (
     <section
       id="testimonials"
-      className="bg-[#1A1A1B] py-24 md:py-32 lg:py-40"
+      className="bg-[#1A1A1B] pt-12 md:pt-16 pb-24 md:pb-32 lg:pb-40 scroll-mt-16 md:scroll-mt-20"
       aria-label={t(tr.testimonials.ariaCarousel, locale)}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}

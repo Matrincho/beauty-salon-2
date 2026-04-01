@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Menu, X } from 'lucide-react'
 import CtaButton from '@/components/ui/CtaButton'
@@ -14,6 +14,10 @@ function Navbar() {
   const isHomePage = pathname === '/'
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const mobileMenuRef = useRef<HTMLDivElement | null>(null)
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null)
+  const moreButtonRef = useRef<HTMLButtonElement | null>(null)
 
   const navLinks = useMemo(() => [
     { label: t(tr.nav.services, locale), href: '#services' },
@@ -50,9 +54,76 @@ function Navbar() {
     }
   }, [menuOpen])
 
+  useEffect(() => {
+    if (!menuOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false)
+        if (menuButtonRef.current) {
+          menuButtonRef.current.focus()
+        }
+      }
+
+      if (event.key === 'Tab' && mobileMenuRef.current) {
+        const focusable = mobileMenuRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+        if (focusable.length === 0) return
+
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+
+        if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        } else if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [menuOpen])
+
   const handleNavClick = useCallback(() => setMenuOpen(false), [])
-  const handleMenuToggle = useCallback(() => setMenuOpen(prev => !prev), [])
+  const handleMenuToggle = useCallback(() => {
+    setMenuOpen(prev => !prev)
+  }, [])
   const handleBackdropClick = useCallback(() => setMenuOpen(false), [])
+
+  const handleMoreToggle = useCallback(() => {
+    setMoreOpen(prev => !prev)
+  }, [])
+
+  useEffect(() => {
+    if (!moreOpen) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!(event.target instanceof Node)) return
+      if (moreButtonRef.current && !moreButtonRef.current.parentElement?.contains(event.target)) {
+        setMoreOpen(false)
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMoreOpen(false)
+        if (moreButtonRef.current) {
+          moreButtonRef.current.focus()
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [moreOpen])
 
   const headerClass = [
     'fixed top-0 left-0 right-0 z-50',
@@ -89,14 +160,35 @@ function Navbar() {
               </a>
             ))}
             <span className="w-px h-3 bg-[#E5E0D8]" aria-hidden="true" />
-            <div className="relative group">
-              <button className="font-sans text-xs uppercase tracking-widest text-[#1A1A1B]/60 hover:text-[#D4AF37] transition-colors duration-200 py-2">
+            <div className="relative">
+              <button
+                ref={moreButtonRef}
+                type="button"
+                className="font-sans text-xs uppercase tracking-widest text-[#1A1A1B]/60 hover:text-[#D4AF37] transition-colors duration-200 py-2"
+                aria-haspopup="true"
+                aria-expanded={moreOpen}
+                aria-controls="navbar-more-menu"
+                onClick={handleMoreToggle}
+              >
                 {t(tr.nav.more, locale)}
               </button>
-              <div className="absolute right-0 top-full pt-2 hidden group-hover:block bg-white border border-[#E5E0D8] rounded-md shadow-lg z-50">
+              <div
+                id="navbar-more-menu"
+                role="menu"
+                aria-label={t(tr.nav.more, locale)}
+                className={`absolute right-0 top-full pt-2 bg-white border border-[#E5E0D8] rounded-md shadow-lg z-50 ${
+                  moreOpen ? 'block' : 'hidden'
+                }`}
+              >
                 <div className="flex flex-col gap-0 min-w-40">
                   {pageLinks.map(link => (
-                    <Link key={link.href} href={link.href} className="px-4 py-3 font-sans text-xs uppercase tracking-widest text-[#1A1A1B]/60 hover:text-[#D4AF37] hover:bg-[#F9F8F6] transition-colors duration-200 first:rounded-t-md last:rounded-b-md border-b border-[#E5E0D8] last:border-b-0">
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      role="menuitem"
+                      className="px-4 py-3 font-sans text-xs uppercase tracking-widest text-[#1A1A1B]/60 hover:text-[#D4AF37] hover:bg-[#F9F8F6] transition-colors duration-200 first:rounded-t-md last:rounded-b-md border-b border-[#E5E0D8] last:border-b-0"
+                      onClick={() => setMoreOpen(false)}
+                    >
                       {link.label}
                     </Link>
                   ))}
@@ -106,7 +198,11 @@ function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center gap-4">
-            <button onClick={toggleLocale} className="flex items-center gap-0.5 font-sans text-xs tracking-widest">
+            <button
+              type="button"
+              onClick={toggleLocale}
+              className="flex items-center gap-0.5 font-sans text-xs tracking-widest"
+            >
               <span className={locale === 'bg' ? 'text-[#D4AF37] font-semibold' : 'text-[#1A1A1B]/40'}>BG</span>
               <span className="text-[#E5E0D8] mx-1">|</span>
               <span className={locale === 'en' ? 'text-[#D4AF37] font-semibold' : 'text-[#1A1A1B]/40'}>EN</span>
@@ -123,13 +219,28 @@ function Navbar() {
               </Link>
             </div>
           )}
-          <button className="md:hidden absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 text-[#1A1A1B] hover:text-[#D4AF37] transition-colors" onClick={handleMenuToggle} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen}>
+          <button
+            ref={menuButtonRef}
+            type="button"
+            className="md:hidden absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 text-[#1A1A1B] hover:text-[#D4AF37] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]"
+            onClick={handleMenuToggle}
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu-drawer"
+          >
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
       </header>
 
-      <div className={mobileDrawerClass} aria-hidden={!menuOpen}>
+      <div
+        id="mobile-menu-drawer"
+        ref={mobileMenuRef}
+        className={mobileDrawerClass}
+        role="dialog"
+        aria-modal="true"
+        aria-hidden={!menuOpen}
+      >
         <nav className="flex flex-col items-start gap-1 px-8 pt-8 pb-8" aria-label="Mobile navigation">
           {navLinks.map(link => (
             <a key={link.href} href={link.href} onClick={handleNavClick} className="font-serif text-2xl text-[#1A1A1B] py-3 border-b border-[#E5E0D8] w-full hover:text-[#D4AF37] transition-colors duration-200">
@@ -146,7 +257,11 @@ function Navbar() {
           </div>
           <div className="w-full mt-6 flex items-center gap-3">
             <span className="font-sans text-xs uppercase tracking-widest text-[#1A1A1B]/40">{locale === 'bg' ? 'Език' : 'Language'}</span>
-            <button onClick={toggleLocale} className="flex items-center gap-0.5 font-sans text-sm tracking-widest">
+            <button
+              type="button"
+              onClick={toggleLocale}
+              className="flex items-center gap-0.5 font-sans text-sm tracking-widest"
+            >
               <span className={locale === 'bg' ? 'text-[#D4AF37] font-semibold' : 'text-[#1A1A1B]/40'}>BG</span>
               <span className="text-[#E5E0D8] mx-1.5">|</span>
               <span className={locale === 'en' ? 'text-[#D4AF37] font-semibold' : 'text-[#1A1A1B]/40'}>EN</span>

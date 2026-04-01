@@ -1,10 +1,14 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Geist, Geist_Mono, Playfair_Display } from 'next/font/google'
 import { LanguageProvider } from '@/lib/i18n/LanguageContext'
 import './globals.css'
 
-const geist = Geist({ subsets: ['latin'] })
-const geistMono = Geist_Mono({ subsets: ['latin'] })
+const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
+const playfairDisplay = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-playfair-display',
+})
 
 export const metadata: Metadata = {
   title: 'Maison Élite',
@@ -23,7 +27,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="bg" suppressHydrationWarning>
-      <body className={`${geist.variable} ${geistMono.variable} font-sans`} suppressHydrationWarning>
+      <body
+        className={`${geist.variable} ${geistMono.variable} ${playfairDisplay.variable} font-sans`}
+        suppressHydrationWarning
+      >
         <LanguageProvider>
           {children}
         </LanguageProvider>
