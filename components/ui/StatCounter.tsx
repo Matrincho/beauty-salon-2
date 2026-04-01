@@ -15,14 +15,18 @@ export default function StatCounter({ value, label, index = 0 }: StatCounterProp
   useEffect(() => {
     // Only animate on first page load
     if (hasAnimated) {
-      setDisplayValue(value)
+      queueMicrotask(() => {
+        setDisplayValue(value)
+      })
       return
     }
 
     const numericValue = parseInt(value.replace(/\D/g, ''), 10)
     if (isNaN(numericValue)) {
-      setDisplayValue(value)
-      setHasAnimated(true)
+      queueMicrotask(() => {
+        setDisplayValue(value)
+        setHasAnimated(true)
+      })
       return
     }
 

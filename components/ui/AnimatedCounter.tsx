@@ -21,7 +21,9 @@ export default function AnimatedCounter({ value, label, variant = 'dark' }: Anim
     // Extract the numeric part from value (e.g., "98%" -> 98, "500+" -> 500, "15 min" -> 15)
     const numericValue = parseInt(value.replace(/\D/g, ''), 10)
     if (isNaN(numericValue)) {
-      setDisplayValue(value)
+      queueMicrotask(() => {
+        setDisplayValue(value)
+      })
       return
     }
 

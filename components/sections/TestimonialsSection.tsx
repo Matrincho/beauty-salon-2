@@ -45,12 +45,16 @@ export default function TestimonialsSection() {
     if (!emblaApi) return
     emblaApi.on('select', updateButtons)
     emblaApi.on('reInit', updateButtons)
-    updateButtons()
+    queueMicrotask(() => {
+      updateButtons()
+    })
   }, [emblaApi, updateButtons])
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setPrefersReducedMotion(mediaQuery.matches)
+    queueMicrotask(() => {
+      setPrefersReducedMotion(mediaQuery.matches)
+    })
 
     const handleChange = (event: MediaQueryListEvent) => {
       setPrefersReducedMotion(event.matches)

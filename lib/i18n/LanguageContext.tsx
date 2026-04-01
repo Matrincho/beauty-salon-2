@@ -32,7 +32,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     try {
       const stored = localStorage.getItem(STORAGE_KEY) as Locale | null
       if (stored === 'bg' || stored === 'en') {
-        setLocale(stored)
+        queueMicrotask(() => {
+          setLocale(stored)
+        })
       }
     } catch {
       // localStorage unavailable, keep default locale
