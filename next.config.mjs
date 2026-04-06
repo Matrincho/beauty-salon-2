@@ -24,10 +24,11 @@ export default withSentryConfig(nextConfig, {
 
   project: "beuty-salon-demo",
 
-  // Turbopack runs release creation + source map upload in `runAfterProductionCompile`. Without a
-  // valid SENTRY_AUTH_TOKEN, sentry-cli fails (401) and Vercel fails the build. Skip that hook
-  // until the token is set under Vercel → Project → Environment Variables.
-  ...(process.env.SENTRY_AUTH_TOKEN
+  // Turbopack runs release creation + source map upload in `runAfterProductionCompile`. Vercel
+  // often sets SENTRY_AUTH_TOKEN (integration or placeholder); an invalid token still makes
+  // sentry-cli fail and the deployment goes red. Opt-in only: set SENTRY_UPLOAD_SOURCEMAPS=true
+  // in env when you have a valid token and want uploads. Default = skip upload, deploy succeeds.
+  ...(process.env.SENTRY_UPLOAD_SOURCEMAPS === 'true'
     ? {}
     : {
         sourcemaps: { disable: true },
