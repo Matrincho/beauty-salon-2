@@ -1,0 +1,29 @@
+import { createSupabaseServerClient } from '@/lib/supabase/server'
+import type { AccountStatus, UserRole } from './roles'
+
+type ProfileResult = {
+  id: string
+  full_name: string | null
+  role: UserRole
+  account_status: AccountStatus
+}
+
+export async function getCurrentUserProfile() {
+  const supabase = await createSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { user: null, profile: null }
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, full_name, role, account_status')
+    .eq('id', user.id)
+    .single<ProfileResult>()
+
+  return { user, profile: profile ?? null }
+}
+

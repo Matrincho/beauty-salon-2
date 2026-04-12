@@ -13,6 +13,8 @@ export const translations = {
     about:           { bg: 'За нас',            en: 'About' },
     careers:         { bg: 'Кариери',           en: 'Careers' },
     contacts:        { bg: 'Контакти',          en: 'Contacts' },
+    login:           { bg: 'Вход',              en: 'Log in' },
+    signup:          { bg: 'Регистрация',       en: 'Sign up' },
     openMenu:        { bg: 'Отвори менюто',     en: 'Open menu' },
     closeMenu:       { bg: 'Затвори менюто',    en: 'Close menu' },
   },

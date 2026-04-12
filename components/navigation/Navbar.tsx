@@ -198,6 +198,21 @@ function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/login"
+                className="font-sans text-xs uppercase tracking-widest text-[#1A1A1B]/60 hover:text-[#D4AF37] transition-colors duration-200"
+              >
+                {t(tr.nav.login, locale)}
+              </Link>
+              <Link
+                href="/signup"
+                className="font-sans text-xs uppercase tracking-widest text-[#1A1A1B] border border-[#E5E0D8] rounded-md px-3 py-2 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors duration-200"
+              >
+                {t(tr.nav.signup, locale)}
+              </Link>
+            </div>
+            <span className="w-px h-4 bg-[#E5E0D8]" aria-hidden="true" />
             <button
               type="button"
               onClick={toggleLocale}
@@ -254,6 +269,22 @@ function Navbar() {
                 {link.label}
               </Link>
             ))}
+          </div>
+          <div className="w-full mt-6 flex flex-col gap-2">
+            <Link
+              href="/login"
+              onClick={handleNavClick}
+              className="font-serif text-2xl text-[#1A1A1B] py-3 border-b border-[#E5E0D8] w-full hover:text-[#D4AF37] transition-colors duration-200"
+            >
+              {t(tr.nav.login, locale)}
+            </Link>
+            <Link
+              href="/signup"
+              onClick={handleNavClick}
+              className="font-serif text-2xl text-[#1A1A1B] py-3 border-b border-[#E5E0D8] w-full hover:text-[#D4AF37] transition-colors duration-200"
+            >
+              {t(tr.nav.signup, locale)}
+            </Link>
           </div>
           <div className="w-full mt-6 flex items-center gap-3">
             <span className="font-sans text-xs uppercase tracking-widest text-[#1A1A1B]/40">{locale === 'bg' ? 'Език' : 'Language'}</span>

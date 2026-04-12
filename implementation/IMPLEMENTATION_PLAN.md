@@ -7,7 +7,7 @@ This document is the **step-by-step implementation plan** for adding Supabase (d
 - **Session catalog**: **Type A** — treat “sessions” as a **catalog of session types** (services); real calendar events are **bookings** linked to a type + staff + time.
 - **Business model**: **Single business** (one salon); no multi-tenant v1.
 - **Staff**: **Required** — bookings associate with a **staff member**.
-- **Admin bootstrap**: handled **later in Supabase** (seed / dashboard / policy); plan leaves explicit hooks.
+- **Admin bootstrap**: create admin user **manually in Supabase** after schema/roles exist; do not automate seed in first pass.
 - **User vs client**: **Resolved in plan** (recommended default below).
 - **Banned/rejected users**: enforce at **Auth session + API/RLS**; audit reasons and timestamps.
 - **Bookings**: **1:1**; admin **price override** allowed on a booking.
@@ -80,6 +80,17 @@ Supabase
 3. Env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server only, never client).
 4. Add server/client Supabase helpers per Supabase Next.js SSR guide.
 5. Add middleware: refresh session cookie, protect `/admin/*`, `/app/*` (or your chosen prefixes).
+
+### 3.1 Execution order for first implementation pass
+
+This is the exact order for the initial build/test phase:
+
+1. **Supabase setup first**: project wiring + migrations; create all core enums/tables/triggers/RLS.
+2. **Auth pages second**: build `/signup` and `/login` first (then `/logout` and `/forgot-password` as part of the auth baseline).
+3. **Roles third**: enforce routing/guards from `profiles.role`; create initial admin user manually in Supabase dashboard/SQL once roles exist.
+4. **Mock dashboards fourth**: create minimal `/admin` and `/app` dashboard mockups to validate signup/login/role redirects before full feature CRUD.
+
+This order is intentional: prove authentication + authorization wiring early, then expand business features.
 
 ---
 
@@ -365,35 +376,41 @@ Population: **Auth hook** (Edge Function on `auth` events) or **Supabase Auth we
 
 ## 13. Milestone sequencing (recommended)
 
-### Milestone M0 — Foundation
+### Milestone M0 — Supabase foundation (must happen first)
 
-- Supabase project, env, SSR helpers, middleware, `profiles` + trigger, RLS baseline.
-- Auth pages: login, signup, logout, forgot password.
-- Profile page; Sonner top-left; account status gate for banned users.
+- Supabase project, env, SSR helpers, middleware.
+- Create **all core enums/tables** from this plan (`profiles`, `salon_settings`, `staff_members`, `session_types`, `bookings`, `login_events`, `audit_logs`) plus required triggers and baseline RLS.
+- Keep admin bootstrap manual for now (no automated seed).
 
-### Milestone M1 — Catalog & staff
+### Milestone M1 — Auth pages (signup/login first)
 
-- `session_types`, `staff_members`, admin CRUD pages, Storage for images.
-- Public read of active session types for booking flow.
+- Build `/signup` and `/login` first, then `/logout` and `/forgot-password`.
+- Wire cookie-based SSR sessions and redirect by role after login.
+- Add account status gate for banned/rejected users.
 
-### Milestone M2 — Bookings
+### Milestone M2 — Role handling + manual admin bootstrap
 
-- Client booking flow with staff + slot picker (start **simple**: discrete slots generated server-side from rules Phase A, or manual admin slotting in v0.5).
-- Admin booking management, status transitions, price override, cancel reasons.
-- Promotion `user` → `client` trigger.
+- Finalize role-based guards from `profiles.role` for `/admin/*` and `/app/*`.
+- Manually create/promote initial admin in Supabase (dashboard or SQL) after schema is live.
+- Verify expected behavior for `admin`, `staff`, `user`, `client` route access.
 
-### Milestone M3 — History & audit
+### Milestone M3 — Mock dashboards for role testing
 
-- `login_events`, `audit_logs`, admin read UI.
-- Admin client management: reject/ban with reasons; RLS + middleware.
+- Build minimal mockup dashboards: `/admin` and `/app` (layout, sidebar/topbar, placeholder KPI/cards/list blocks).
+- Focus on authentication flow validation: signup -> login -> redirect -> authorized/unauthorized state.
+- Keep these as scaffolds; full CRUD modules follow in next milestones.
 
-### Milestone M4 — Availability Phase B
+### Milestone M4 — Product modules (catalog, staff, bookings)
 
-- Rules + exceptions tables; calendar UX; validation when booking.
+- `session_types`, `staff_members` management pages and storage integration.
+- Client booking flow with staff + slot picker (Phase A availability).
+- Admin booking management, status transitions, price override, promotion trigger `user` -> `client`.
 
-### Milestone M5 — Polish
+### Milestone M5 — History, audit, availability Phase B, polish
 
-- Optional transactional email; **Bulgarian-first i18n** for any dashboard strings not yet in `translations`; fill English pass; accessibility pass on tables/forms.
+- `login_events`, `audit_logs`, admin read UI and client status management (reject/ban with reasons).
+- Rules + exceptions tables; calendar UX; booking validation (Phase B).
+- Optional transactional email; **Bulgarian-first i18n** completion; accessibility pass on tables/forms.
 
 ---
 
