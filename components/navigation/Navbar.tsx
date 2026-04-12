@@ -7,6 +7,7 @@ import CtaButton from '@/components/ui/CtaButton'
 import { useLanguage } from '@/lib/i18n/LanguageContext'
 import { translations as tr, t } from '@/lib/i18n/translations'
 import { usePathname } from 'next/navigation'
+import { NavbarUserMenuDesktop, NavbarUserMenuMobile } from '@/components/navigation/NavbarUserMenu'
 
 function Navbar() {
   const { locale, toggleLocale } = useLanguage()
@@ -126,7 +127,7 @@ function Navbar() {
   }, [moreOpen])
 
   const headerClass = [
-    'fixed top-0 left-0 right-0 z-50',
+    'fixed top-0 left-0 right-0 z-50 overflow-visible',
     'border-b border-[#D4AF37]/20',
     'transition-all duration-300',
     scrolled ? 'bg-[#F9F8F6]/95 backdrop-blur-sm' : 'bg-[#F9F8F6]',
@@ -198,6 +199,8 @@ function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center gap-4">
+            <NavbarUserMenuDesktop locale={locale} />
+            <span className="w-px h-4 bg-[#E5E0D8]" aria-hidden="true" />
             <button
               type="button"
               onClick={toggleLocale}
@@ -255,6 +258,7 @@ function Navbar() {
               </Link>
             ))}
           </div>
+          <NavbarUserMenuMobile locale={locale} onNavigate={handleNavClick} />
           <div className="w-full mt-6 flex items-center gap-3">
             <span className="font-sans text-xs uppercase tracking-widest text-[#1A1A1B]/40">{locale === 'bg' ? 'Език' : 'Language'}</span>
             <button
