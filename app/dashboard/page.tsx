@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { getCurrentUserProfile } from '@/lib/auth/profile'
 
 export default async function DashboardPage() {
@@ -6,16 +7,24 @@ export default async function DashboardPage() {
   return (
     <main className="min-h-screen bg-[#F9F8F6] px-6 py-10 text-[#1A1A1B]">
       <div className="mx-auto max-w-5xl">
-        <header className="mb-8 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm uppercase tracking-wide text-[#8C8074]">Maison Elite</p>
-            <h1 className="text-3xl font-serif">Табло (Mockup)</h1>
-            <p className="mt-2 text-sm text-[#8C8074]">
-              Текуща роля:{' '}
-              <span className="font-medium text-[#1A1A1B]">{profile?.role}</span>
-            </p>
+        <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-3">
+            <Link
+              href="/"
+              className="inline-flex w-fit items-center gap-2 rounded border border-[#E5E0D8] bg-white px-4 py-2 text-sm font-sans text-[#1A1A1B] transition-colors hover:border-[#D4AF37] hover:text-[#D4AF37]"
+            >
+              ← Към сайта
+            </Link>
+            <div>
+              <p className="text-sm uppercase tracking-wide text-[#8C8074]">Maison Elite</p>
+              <h1 className="text-3xl font-serif">Табло (Mockup)</h1>
+              <p className="mt-2 text-sm text-[#8C8074]">
+                Текуща роля:{' '}
+                <span className="font-medium text-[#1A1A1B]">{profile?.role}</span>
+              </p>
+            </div>
           </div>
-          <form action="/logout" method="post">
+          <form action="/logout" method="post" className="shrink-0">
             <button className="rounded border border-[#E5E0D8] bg-white px-4 py-2 text-sm hover:border-[#D4AF37]">
               Изход
             </button>

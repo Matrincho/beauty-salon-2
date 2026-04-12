@@ -4,6 +4,8 @@ import type { AccountStatus, UserRole } from './roles'
 type ProfileResult = {
   id: string
   full_name: string | null
+  phone: string | null
+  avatar_url: string | null
   role: UserRole
   account_status: AccountStatus
 }
@@ -20,7 +22,7 @@ export async function getCurrentUserProfile() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, full_name, role, account_status')
+    .select('id, full_name, phone, avatar_url, role, account_status')
     .eq('id', user.id)
     .single<ProfileResult>()
 

@@ -451,4 +451,19 @@ Beyond login, session types, bookings, role/ban/settings:
 
 ---
 
+## 18. Profile page & navbar account menu (delivered)
+
+**Scope:** `/profile` for any authenticated role; marketing navbar shows account avatar (or placeholder) with dropdown: Profile + Log out (log out flow unchanged).
+
+### Checklist
+
+- [x] Route **`/profile`** — read-only view: avatar (or placeholder), name, email, role, account status, phone; links to home and role-appropriate hub (`/dashboard` or `/admin`).
+- [x] **`getCurrentUserProfile`** includes `avatar_url` and `phone` for UI.
+- [x] **Middleware** treats **`/profile`** as authenticated-only (same session refresh as other protected routes).
+- [x] **Navbar (desktop):** when signed out — Вход / Регистрация; when signed in — avatar or **`User`** placeholder, dropdown with **Профил** → `/profile` and **Изход** → existing `POST /logout`.
+- [x] **Navbar (mobile drawer):** same behaviour — account block with avatar/placeholder, **Профил**, **Изход** (form POST unchanged).
+- [x] **i18n:** `nav.profile`, `nav.logOut`, `nav.accountMenu` (BG primary, EN secondary).
+
+---
+
 *End of implementation plan.*

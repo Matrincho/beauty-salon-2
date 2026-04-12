@@ -2,6 +2,12 @@ import { withSentryConfig } from '@sentry/nextjs'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Default Server Action body limit is 1 MB. Avatar uploads need room above the 5 MB app/bucket cap for multipart overhead.
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '6mb',
+    },
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
