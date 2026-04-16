@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { LayoutDashboard, LogOut, UserRound } from 'lucide-react'
+import { ChevronDown, LayoutDashboard, LogOut, UserRound } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { getAvatarDisplayUrl } from '@/lib/supabase/avatar-display'
 import type { Locale } from '@/lib/i18n/translations'
 import { translations as tr, t } from '@/lib/i18n/translations'
 import type { UserRole } from '@/lib/auth/roles'
+import { profileDisplayName } from '@/lib/auth/profile-display'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 
 type MenuState = {
   loading: boolean
@@ -26,9 +28,9 @@ type MenuState = {
   role: UserRole | null
 }
 
-/** Dashboard href for account menu; staff uses admin dashboard like routing elsewhere. */
+/** Dashboard href for account menu. */
 function dashboardHrefForRole(role: UserRole | null): string | null {
-  if (role === 'admin' || role === 'staff') {
+  if (role === 'admin') {
     return '/admin'
   }
   if (role === 'user' || role === 'client') {
@@ -92,6 +94,8 @@ function useNavbarAuth(): MenuState {
       return
     }
 
+    // Use columns present on every schema version: avoid first_name/last_name here so
+    // the menu still loads role/dashboard if the contact-address migration is not applied yet.
     const { data: profile } = await supabase
       .from('profiles')
       .select('avatar_url, full_name, role')
@@ -105,7 +109,7 @@ function useNavbarAuth(): MenuState {
       signedIn: true,
       email: user.email ?? null,
       avatarUrl: avatarDisplay,
-      fullName: profile?.full_name ?? null,
+      fullName: profileDisplayName(profile),
       role: (profile?.role as UserRole | null) ?? null,
     })
   }, [])
@@ -174,13 +178,44 @@ function AvatarCircle({
   )
 }
 
-export function NavbarUserMenuDesktop({ locale }: { locale: Locale }) {
+export function NavbarUserMenuDesktop({
+  locale,
+  triggerVariant = 'avatar',
+  appearance = 'marketing',
+}: {
+  locale: Locale
+  /** `avatar-with-label` — avatar + display name + chevron (e.g. admin header). */
+  triggerVariant?: 'avatar' | 'avatar-with-label'
+  /** `admin` — light text / frosted trigger on dark admin chrome. */
+  appearance?: 'marketing' | 'admin'
+}) {
   const auth = useNavbarAuth()
   const logoutFormRef = useRef<HTMLFormElement>(null)
   const initials = getInitials(auth.fullName, auth.email)
 
   if (auth.loading) {
-    return <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-[#E5E0D8]" aria-hidden />
+    if (triggerVariant === 'avatar-with-label') {
+      return (
+        <div
+          className={cn(
+            'flex h-10 max-w-[220px] animate-pulse items-center gap-2 rounded-md border px-2 py-1.5',
+            appearance === 'admin'
+              ? 'border-white/15 bg-white/10'
+              : 'border-[#E5E0D8] bg-white'
+          )}
+          aria-hidden
+        />
+      )
+    }
+    return (
+      <div
+        className={cn(
+          'h-9 w-9 shrink-0 animate-pulse rounded-full',
+          appearance === 'admin' ? 'bg-white/15' : 'bg-[#E5E0D8]'
+        )}
+        aria-hidden
+      />
+    )
   }
 
   if (!auth.signedIn) {
@@ -206,6 +241,21 @@ export function NavbarUserMenuDesktop({ locale }: { locale: Locale }) {
     auth.fullName?.trim() || auth.email?.split('@')[0] || '—'
   const dashboardHref = dashboardHrefForRole(auth.role)
 
+  const triggerClassName =
+    triggerVariant === 'avatar-with-label'
+      ? cn(
+          'flex max-w-[min(100%,220px)] cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2',
+          appearance === 'admin'
+            ? 'border-white/15 bg-white/5 shadow-none hover:border-[#D4AF37]/35 focus-visible:ring-offset-[#1A1A1B]'
+            : 'border-[#E5E0D8] bg-white shadow-sm hover:border-[#D4AF37]/60 focus-visible:ring-offset-[#F9F8F6]'
+        )
+      : cn(
+          'flex h-9 w-9 shrink-0 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2',
+          appearance === 'admin'
+            ? 'focus-visible:ring-offset-[#1A1A1B]'
+            : 'focus-visible:ring-offset-[#F9F8F6]'
+        )
+
   return (
     <>
       <form ref={logoutFormRef} action="/logout" method="post" className="hidden" aria-hidden />
@@ -213,10 +263,34 @@ export function NavbarUserMenuDesktop({ locale }: { locale: Locale }) {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="flex h-9 w-9 shrink-0 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2 focus-visible:ring-offset-[#F9F8F6]"
+            className={triggerClassName}
             aria-label={t(tr.nav.accountMenu, locale)}
           >
-            <AvatarCircle avatarUrl={auth.avatarUrl} initials={initials} className="h-9 w-9" />
+            <AvatarCircle
+              avatarUrl={auth.avatarUrl}
+              initials={initials}
+              className={triggerVariant === 'avatar-with-label' ? 'h-8 w-8' : 'h-9 w-9'}
+            />
+            {triggerVariant === 'avatar-with-label' ? (
+              <>
+                <span
+                  className={cn(
+                    'min-w-0 flex-1 truncate text-left font-sans text-sm font-medium',
+                    appearance === 'admin' ? 'text-white' : 'text-[#1A1A1B]'
+                  )}
+                  title={displayName}
+                >
+                  {displayName}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 shrink-0',
+                    appearance === 'admin' ? 'text-white/50' : 'text-[#8C8074]'
+                  )}
+                  aria-hidden
+                />
+              </>
+            ) : null}
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent

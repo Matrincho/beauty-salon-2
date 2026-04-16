@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getCurrentUserProfile } from '@/lib/auth/profile'
+import { getCurrentUserProfile, profileDisplayName } from '@/lib/auth/profile'
 
 export default async function DashboardPage() {
   const { user, profile } = await getCurrentUserProfile()
@@ -17,7 +17,7 @@ export default async function DashboardPage() {
             </Link>
             <div>
               <p className="text-sm uppercase tracking-wide text-[#8C8074]">Maison Elite</p>
-              <h1 className="text-3xl font-serif">Табло (Mockup)</h1>
+              <h1 className="text-3xl font-serif">Табло</h1>
               <p className="mt-2 text-sm text-[#8C8074]">
                 Текуща роля:{' '}
                 <span className="font-medium text-[#1A1A1B]">{profile?.role}</span>
@@ -34,12 +34,14 @@ export default async function DashboardPage() {
         <section className="grid gap-4 md:grid-cols-3">
           <article className="rounded border border-[#E5E0D8] bg-white p-4">
             <h2 className="font-medium">Профил</h2>
-            <p className="mt-2 text-sm text-[#8C8074]">{profile?.full_name || 'Без име'}</p>
+            <p className="mt-2 text-sm text-[#8C8074]">
+              {profileDisplayName(profile) || 'Без име'}
+            </p>
             <p className="text-sm text-[#8C8074]">{user?.email}</p>
           </article>
           <article className="rounded border border-[#E5E0D8] bg-white p-4">
             <h2 className="font-medium">Моите резервации</h2>
-            <p className="mt-2 text-sm text-[#8C8074]">Mock cards за следваща стъпка.</p>
+            <p className="mt-2 text-sm text-[#8C8074]">Преглед на резервациите — предстои.</p>
           </article>
           <article className="rounded border border-[#E5E0D8] bg-white p-4">
             <h2 className="font-medium">Статус</h2>

@@ -32,7 +32,7 @@ This document is the **step-by-step implementation plan** for adding Supabase (d
 | Concept | Implementation |
 |--------|----------------|
 | **Auth identity** | Supabase `auth.users` |
-| **App profile** | `public.profiles` — display name, avatar URL, phone, `account_status`, link to `auth.users.id` |
+| **App profile** | `public.profiles` — structured name (`first_name`, `last_name`, denormalized `full_name`), `phone_prefix` + `phone_number`, postal-style address fields, `avatar_url`, `account_status`, link to `auth.users.id` |
 | **Authorization role** | `public.profiles.role` enum: `admin`, `staff`, `user`, `client` |
 | **Promotion rule** | When a booking first reaches **`confirmed`** or **`completed`** (not merely `pending` or `cancelled`), set `role` from `user` → `client`. **Do not** auto-demote on cancellations. **Never** overwrite `admin` or `staff` via this rule. |
 
@@ -110,12 +110,15 @@ Naming is illustrative; adjust to taste but keep **one source of truth** for enu
 
 - `id` (uuid, PK, FK → `auth.users.id`)
 - `email` (cached, optional if always from auth)
-- `full_name`, `phone`, `avatar_url`
+- **Name:** `first_name`, `last_name` (nullable text); **`full_name`** kept for display/back-compat and kept in sync by trigger `profiles_sync_full_name` whenever `first_name` / `last_name` change (empty both → `full_name` null).
+- **Phone:** `phone_prefix` (e.g. `+359`), `phone_number` (national part). Legacy column `phone` was migrated into `phone_number` then dropped — migration `20260413120000_profiles_contact_address.sql` (**applied on remote via SQL Editor / equivalent**).
+- **Address (nullable text):** `address_line_1`, `address_line_2`, `city`, `county`, `postcode`, `country`.
+- `avatar_url`
 - `role` `user_role`
 - `account_status` `account_status`
 - `rejected_at`, `rejected_reason`, `banned_at`, `ban_reason` (nullable)
 - `created_at`, `updated_at`
-- Trigger: on `auth.users` insert → create `profiles` row default `role = user`, `account_status = active` (or `pending_review` if you want manual approval later).
+- Trigger: on `auth.users` insert → `handle_new_user` creates `profiles` row default `role = user`, `account_status = active` (or `pending_review` if you want manual approval later); reads `first_name` / `last_name` from auth user metadata, or splits a single `full_name` metadata value on first space when separate names are absent.
 
 **`salon_settings`** (single row or key-value — single row is simpler)
 
@@ -250,6 +253,8 @@ Population: **Auth hook** (Edge Function on `auth` events) or **Supabase Auth we
 | `/app` | Client dashboard home |
 | `/app/profile` | View/edit profile, avatar |
 | `/app/bookings` | List bookings |
+
+**Note:** the live app currently exposes the client profile at **`/profile`** (see §18). Keeping `/app/profile` in the table preserves the target IA when routes are grouped under `/app/*` later.
 | `/app/bookings/new` | Create booking (session type, staff, slot) |
 | `/app/bookings/[id]` | Detail, cancel flow, notes read-only |
 
@@ -271,6 +276,26 @@ Population: **Auth hook** (Edge Function on `auth` events) or **Supabase Auth we
 | `/admin/reporting` | Date range reports (export CSV later) |
 | `/admin/audit` | Read-only audit trail (admin) |
 | `/admin/settings` | Salon settings, timezone |
+| `/admin/session-categories` | Session categories CRUD (nested under **Сесии** in sidebar) |
+
+### 7.2.1 Admin shell, navigation order, and delivery phasing (agreed)
+
+**Layout:** Shared admin route-group layout (e.g. `app/(admin)/layout.tsx`) — **left sidebar**, **main** column, **top header**. Header **top-right:** **avatar + display name**; use the **same dropdown menu pattern** as the public site header (`NavbarUserMenu` or a small shared **AccountMenu** wrapper) so branding stays consistent.
+
+**Sidebar order (daily workflow):** **Резервации** → **Клиенти** → **Сесии**.
+
+**Under «Сесии» (option 1 — nested items):**
+
+- **Категории** — CRUD for session categories. Route: **`/admin/session-categories`** (see row added in §7.2 table).
+- **Услуги** — CRUD for session types / bookable catalog (`session_types`). Route: **`/admin/session-types`** (and `/new`, `/[id]` as above).
+
+**Staff (later):** Drive the sidebar from a **single navigation config** (e.g. each item optional `roles` / visibility) so **staff** get a **filtered subset** without a second shell (aligned with §7 recommendation).
+
+**Delivery phasing:** **Phase A —** admin shell, sidebar/header, overview KPI **cards**, **quick links**, and **placeholder pages** using **central mock data** (include empty-state variants) until design sign-off. **Phase B —** replace mocks with Supabase loads/server actions under **RLS**; **Sonner** toasts **top-left** (§10.2). Detailed checkboxes: GitHub **[#11](https://github.com/Matrincho/beauty-salon-2/issues/11)**.
+
+**Responsive:** On small viewports, sidebar becomes a **drawer/sheet** + menu control (not a fixed bar that breaks mobile).
+
+**A11y:** Admin `<nav>` with descriptive **`aria-label`**; **`aria-current="page"`** (or equivalent) on the active sidebar link, including nested **Сесии** children.
 
 ### 7.3 Additional pages worth adding
 
@@ -380,6 +405,7 @@ Population: **Auth hook** (Edge Function on `auth` events) or **Supabase Auth we
 
 - Supabase project, env, SSR helpers, middleware.
 - Create **all core enums/tables** from this plan (`profiles`, `salon_settings`, `staff_members`, `session_types`, `bookings`, `login_events`, `audit_logs`) plus required triggers and baseline RLS.
+- **Additive (done):** extend `profiles` with structured name, `phone_prefix` / `phone_number`, and address columns per §4.2; migration file `supabase/migrations/20260413120000_profiles_contact_address.sql` — **applied on the linked remote project** (manual SQL Editor run is valid; CLI `db push` is equivalent for future environments).
 - Keep admin bootstrap manual for now (no automated seed).
 
 ### Milestone M1 — Auth pages (signup/login first)
@@ -443,8 +469,9 @@ Beyond login, session types, bookings, role/ban/settings:
 
 ## 17. File deliverables when implementation starts (for traceability)
 
-- `supabase/migrations/*` — schema, RLS, triggers.
+- `supabase/migrations/*` — schema, RLS, triggers (includes `20260413120000_profiles_contact_address.sql` for extended `profiles` contact/address columns and related functions/triggers).
 - `lib/supabase/*` — server, client, middleware helpers.
+- `lib/auth/profile-display.ts` — client-safe display helpers (no server-only imports).
 - `app/(auth)/*`, `app/app/*`, `app/admin/*` — route groups as appropriate.
 - Shared `components/layouts` for App shell vs Admin shell.
 - Types: generated from Supabase CLI or hand-maintained `database.types.ts`.
@@ -453,16 +480,32 @@ Beyond login, session types, bookings, role/ban/settings:
 
 ## 18. Profile page & navbar account menu (delivered)
 
-**Scope:** `/profile` for any authenticated role; marketing navbar shows account avatar (or placeholder) with dropdown: Profile + Log out (log out flow unchanged).
+**Scope:** `/profile` for any authenticated role; marketing navbar shows account avatar (or placeholder) with dropdown: Profile, **role-appropriate dashboard link** (`/dashboard` or `/admin` when `profiles.role` is available), and Log out (log out flow unchanged).
 
 ### Checklist
 
-- [x] Route **`/profile`** — read-only view: avatar (or placeholder), name, email, role, account status, phone; links to home and role-appropriate hub (`/dashboard` or `/admin`).
-- [x] **`getCurrentUserProfile`** includes `avatar_url` and `phone` for UI.
+- [x] Route **`/profile`** — avatar upload/remove (Storage `avatars`, types JPEG/PNG/WebP, **5 MB** app check; bucket limit aligned); editable **first name**, **last name**, **phone prefix**, **phone number**, **address** (lines 1–2, city, county, postcode, country); read-only **role** and **account status**; email still from Auth; links to home and role-appropriate hub (`/dashboard` or `/admin`).
+- [x] **`getCurrentUserProfile`** selects structured profile fields including `avatar_url`, `first_name`, `last_name`, `full_name`, `phone_prefix`, `phone_number`, address columns, `role`, `account_status` for UI and redirects.
+- [x] **Display name helper:** `lib/auth/profile-display.ts` exposes `profileDisplayName()` for Client Components; **do not** import `@/lib/auth/profile` from client nav (it pulls `next/headers` via the server Supabase client).
+- [x] **Next.js config:** raise **Server Actions body size** (e.g. top-level + `experimental` `serverActions.bodySizeLimit` ≈ **6mb**) so avatar uploads above the default **1 MB** action limit succeed before app logic runs.
+- [x] **Navbar profile query:** prefer columns present on every schema revision used by the build (e.g. `avatar_url`, `full_name`, `role`) so the menu still loads **role** and shows **Табло** if an environment has not yet applied the contact-address migration; after migration, `full_name` remains populated via DB trigger for display.
 - [x] **Middleware** treats **`/profile`** as authenticated-only (same session refresh as other protected routes).
-- [x] **Navbar (desktop):** when signed out — Вход / Регистрация; when signed in — avatar or **`User`** placeholder, dropdown with **Профил** → `/profile` and **Изход** → existing `POST /logout`.
-- [x] **Navbar (mobile drawer):** same behaviour — account block with avatar/placeholder, **Профил**, **Изход** (form POST unchanged).
-- [x] **i18n:** `nav.profile`, `nav.logOut`, `nav.accountMenu` (BG primary, EN secondary).
+- [x] **Navbar (desktop):** when signed out — Вход / Регистрация; when signed in — avatar or initials placeholder, dropdown with **Профил** → `/profile`, **Табло** when role maps to a hub, and **Изход** → existing `POST /logout`.
+- [x] **Navbar (mobile drawer):** same behaviour — account block with avatar/placeholder, **Профил**, **Табло** when applicable, **Изход** (form POST unchanged).
+- [x] **Signup** — optional **Име** / **Фамилия** stored in auth metadata as `first_name` / `last_name` for `handle_new_user`.
+- [x] **i18n:** `nav.profile`, `nav.dashboard`, `nav.logOut`, `nav.accountMenu` (BG primary, EN secondary).
+
+---
+
+## 19. Data management & CRUD (admin UI)
+
+Mock-first admin modules for catalog and master lists. **Sessions** mock persists in `localStorage` (`maison-admin-sessions-mock-v1`); **clients** and **bookings** use live Supabase reads with client-side filters.
+
+### Implementation checklist
+
+- [x] **Categories & session types (service catalog)** — CRUD integrated under **Sessions** (`/admin/sessions`, tabs *Categories* and *Service catalog*). Legacy routes `/admin/session-categories` and `/admin/session-types` redirect with `?tab=`.
+- [x] **Scheduled / recurring sessions** — CRUD under **Sessions** tab *Scheduled and recurring* (recurrence: none / weekly / biweekly / monthly; day of week; time; optional end date; optional image URL; notes). Persisted in mock storage only.
+- [x] **Clients & bookings** — Master lists with **filtering**: clients by search + role + account status; bookings by search (client) + booking status.
 
 ---
 

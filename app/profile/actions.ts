@@ -103,12 +103,20 @@ export async function updateProfileAction(formData: FormData) {
     redirect('/login')
   }
 
-  const fullName = getString(formData, 'fullName') || null
-  const phone = getString(formData, 'phone') || null
-
   const { error } = await supabase
     .from('profiles')
-    .update({ full_name: fullName, phone })
+    .update({
+      first_name: getString(formData, 'firstName') || null,
+      last_name: getString(formData, 'lastName') || null,
+      phone_prefix: getString(formData, 'phonePrefix') || null,
+      phone_number: getString(formData, 'phoneNumber') || null,
+      address_line_1: getString(formData, 'addressLine1') || null,
+      address_line_2: getString(formData, 'addressLine2') || null,
+      city: getString(formData, 'city') || null,
+      county: getString(formData, 'county') || null,
+      postcode: getString(formData, 'postcode') || null,
+      country: getString(formData, 'country') || null,
+    })
     .eq('id', user.id)
 
   if (error) {

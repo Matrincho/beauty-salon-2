@@ -38,16 +38,31 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
         ) : null}
 
         <form action={signupAction} className="mt-5 space-y-4">
-          <div className="space-y-1">
-            <label htmlFor="fullName" className="text-sm font-medium">
-              Име (по избор)
-            </label>
-            <input
-              id="fullName"
-              name="fullName"
-              type="text"
-              className="w-full rounded border border-[#E5E0D8] px-3 py-2 text-sm focus:border-[#D4AF37] focus:outline-none"
-            />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label htmlFor="firstName" className="text-sm font-medium">
+                Име (по избор)
+              </label>
+              <input
+                id="firstName"
+                name="firstName"
+                type="text"
+                autoComplete="given-name"
+                className="w-full rounded border border-[#E5E0D8] px-3 py-2 text-sm focus:border-[#D4AF37] focus:outline-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="lastName" className="text-sm font-medium">
+                Фамилия (по избор)
+              </label>
+              <input
+                id="lastName"
+                name="lastName"
+                type="text"
+                autoComplete="family-name"
+                className="w-full rounded border border-[#E5E0D8] px-3 py-2 text-sm focus:border-[#D4AF37] focus:outline-none"
+              />
+            </div>
           </div>
           <div className="space-y-1">
             <label htmlFor="email" className="text-sm font-medium">

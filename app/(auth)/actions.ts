@@ -32,7 +32,8 @@ export async function loginAction(formData: FormData) {
 export async function signupAction(formData: FormData) {
   const email = getString(formData, 'email')
   const password = getString(formData, 'password')
-  const fullName = getString(formData, 'fullName')
+  const firstName = getString(formData, 'firstName')
+  const lastName = getString(formData, 'lastName')
 
   if (!email || !password) {
     redirect('/signup?error=missing_fields')
@@ -44,7 +45,8 @@ export async function signupAction(formData: FormData) {
     password,
     options: {
       data: {
-        full_name: fullName || null,
+        first_name: firstName || null,
+        last_name: lastName || null,
       },
     },
   })

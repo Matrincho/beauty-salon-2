@@ -5,7 +5,7 @@ import { getSupabasePublicEnvOrNull } from './env'
 const authRoutes = ['/login', '/signup']
 
 type ProfileRow = {
-  role: 'admin' | 'staff' | 'user' | 'client'
+  role: 'admin' | 'user' | 'client'
   account_status: 'active' | 'pending_review' | 'rejected' | 'banned'
 }
 
@@ -74,12 +74,12 @@ export async function updateSession(request: NextRequest) {
     return redirectTo(request, '/login?status=suspended')
   }
 
-  if (pathname.startsWith('/admin') && profile?.role !== 'admin' && profile?.role !== 'staff') {
+  if (pathname.startsWith('/admin') && profile?.role !== 'admin') {
     return redirectTo(request, '/unauthorized')
   }
 
   if (pathname.startsWith('/dashboard')) {
-    if (profile?.role === 'admin' || profile?.role === 'staff') {
+    if (profile?.role === 'admin') {
       return redirectTo(request, '/admin')
     }
     if (profile?.role !== 'user' && profile?.role !== 'client') {
@@ -88,14 +88,14 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (pathname.startsWith('/app')) {
-    if (profile?.role === 'admin' || profile?.role === 'staff') {
+    if (profile?.role === 'admin') {
       return redirectTo(request, '/admin')
     }
     return redirectTo(request, '/dashboard')
   }
 
   if (isAuthRoute(pathname)) {
-    if (profile?.role === 'admin' || profile?.role === 'staff') {
+    if (profile?.role === 'admin') {
       return redirectTo(request, '/admin')
     }
     return redirectTo(request, '/dashboard')
@@ -103,4 +103,3 @@ export async function updateSession(request: NextRequest) {
 
   return response
 }
-

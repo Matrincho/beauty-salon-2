@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { getCurrentUserProfile } from '@/lib/auth/profile'
+import { getCurrentUserProfile, type ProfileResult } from '@/lib/auth/profile'
+import { profileDisplayName } from '@/lib/auth/profile-display'
 import { getDefaultRedirectPath } from '@/lib/auth/roles'
 import { updateProfileAction } from '@/app/profile/actions'
 import { getAvatarDisplayUrl } from '@/lib/supabase/avatar-display'
@@ -11,8 +12,11 @@ type ProfilePageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
-function profileInitials(fullName: string | null | undefined, email: string): string {
-  const name = fullName?.trim()
+function profileInitials(
+  profile: Pick<ProfileResult, 'first_name' | 'last_name' | 'full_name'> | null | undefined,
+  email: string
+): string {
+  const name = profileDisplayName(profile)?.trim()
   if (name) {
     const parts = name.split(/\s+/).filter(Boolean)
     if (parts.length >= 2) {
@@ -60,15 +64,15 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
 
   const hubHref = profile ? getDefaultRedirectPath(profile.role) : '/dashboard'
   const displayName =
-    profile?.full_name?.trim() || user.email?.split('@')[0] || '—'
-  const initials = profileInitials(profile?.full_name, user.email ?? '')
+    profileDisplayName(profile)?.trim() || user.email?.split('@')[0] || '—'
+  const initials = profileInitials(profile, user.email ?? '')
 
   return (
     <main className="min-h-screen bg-[#F9F8F6] px-6 py-10 pt-24 md:pt-28 text-[#1A1A1B]">
-      <div className="mx-auto max-w-xl">
+      <div className="mx-auto max-w-2xl">
         <h1 className="text-3xl font-serif">Профил</h1>
         <p className="mt-2 text-sm text-[#8C8074]">
-          Редактирай снимката, името и телефона си. Имейлът се управлява от акаунта в Supabase Auth.
+          Редактирай контактните си данни и адреса. Имейлът се управлява от акаунта в Supabase Auth.
         </p>
 
         {saved ? (
@@ -107,32 +111,169 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           />
 
           <form action={updateProfileAction} className="mt-6 space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label
+                  htmlFor="firstName"
+                  className="font-sans text-xs uppercase tracking-widest text-[#8C8074]"
+                >
+                  Име
+                </label>
+                <input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  autoComplete="given-name"
+                  defaultValue={profile?.first_name ?? ''}
+                  className="mt-1.5 w-full rounded border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#1A1A1B] focus:border-[#D4AF37] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="lastName"
+                  className="font-sans text-xs uppercase tracking-widest text-[#8C8074]"
+                >
+                  Фамилия
+                </label>
+                <input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  autoComplete="family-name"
+                  defaultValue={profile?.last_name ?? ''}
+                  className="mt-1.5 w-full rounded border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#1A1A1B] focus:border-[#D4AF37] focus:outline-none"
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-[minmax(0,7rem)_1fr]">
+              <div>
+                <label
+                  htmlFor="phonePrefix"
+                  className="font-sans text-xs uppercase tracking-widest text-[#8C8074]"
+                >
+                  Код
+                </label>
+                <input
+                  id="phonePrefix"
+                  name="phonePrefix"
+                  type="text"
+                  inputMode="tel"
+                  autoComplete="tel-country-code"
+                  defaultValue={profile?.phone_prefix ?? ''}
+                  placeholder="+359"
+                  className="mt-1.5 w-full rounded border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#1A1A1B] focus:border-[#D4AF37] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="phoneNumber"
+                  className="font-sans text-xs uppercase tracking-widest text-[#8C8074]"
+                >
+                  Телефон
+                </label>
+                <input
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  type="tel"
+                  autoComplete="tel-national"
+                  defaultValue={profile?.phone_number ?? ''}
+                  className="mt-1.5 w-full rounded border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#1A1A1B] focus:border-[#D4AF37] focus:outline-none"
+                />
+              </div>
+            </div>
             <div>
-              <label htmlFor="fullName" className="font-sans text-xs uppercase tracking-widest text-[#8C8074]">
-                Име
+              <label
+                htmlFor="addressLine1"
+                className="font-sans text-xs uppercase tracking-widest text-[#8C8074]"
+              >
+                Адрес, ред 1
               </label>
               <input
-                id="fullName"
-                name="fullName"
+                id="addressLine1"
+                name="addressLine1"
                 type="text"
-                autoComplete="name"
-                defaultValue={profile?.full_name ?? ''}
+                autoComplete="address-line1"
+                defaultValue={profile?.address_line_1 ?? ''}
                 className="mt-1.5 w-full rounded border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#1A1A1B] focus:border-[#D4AF37] focus:outline-none"
               />
             </div>
             <div>
-              <label htmlFor="phone" className="font-sans text-xs uppercase tracking-widest text-[#8C8074]">
-                Телефон
+              <label
+                htmlFor="addressLine2"
+                className="font-sans text-xs uppercase tracking-widest text-[#8C8074]"
+              >
+                Адрес, ред 2
               </label>
               <input
-                id="phone"
-                name="phone"
-                type="tel"
-                autoComplete="tel"
-                defaultValue={profile?.phone ?? ''}
-                placeholder="+359 ..."
+                id="addressLine2"
+                name="addressLine2"
+                type="text"
+                autoComplete="address-line2"
+                defaultValue={profile?.address_line_2 ?? ''}
                 className="mt-1.5 w-full rounded border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#1A1A1B] focus:border-[#D4AF37] focus:outline-none"
               />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="city" className="font-sans text-xs uppercase tracking-widest text-[#8C8074]">
+                  Град
+                </label>
+                <input
+                  id="city"
+                  name="city"
+                  type="text"
+                  autoComplete="address-level2"
+                  defaultValue={profile?.city ?? ''}
+                  className="mt-1.5 w-full rounded border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#1A1A1B] focus:border-[#D4AF37] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label htmlFor="county" className="font-sans text-xs uppercase tracking-widest text-[#8C8074]">
+                  Област
+                </label>
+                <input
+                  id="county"
+                  name="county"
+                  type="text"
+                  autoComplete="address-level1"
+                  defaultValue={profile?.county ?? ''}
+                  className="mt-1.5 w-full rounded border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#1A1A1B] focus:border-[#D4AF37] focus:outline-none"
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label
+                  htmlFor="postcode"
+                  className="font-sans text-xs uppercase tracking-widest text-[#8C8074]"
+                >
+                  Пощенски код
+                </label>
+                <input
+                  id="postcode"
+                  name="postcode"
+                  type="text"
+                  autoComplete="postal-code"
+                  defaultValue={profile?.postcode ?? ''}
+                  className="mt-1.5 w-full rounded border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#1A1A1B] focus:border-[#D4AF37] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="country"
+                  className="font-sans text-xs uppercase tracking-widest text-[#8C8074]"
+                >
+                  Държава
+                </label>
+                <input
+                  id="country"
+                  name="country"
+                  type="text"
+                  autoComplete="country-name"
+                  defaultValue={profile?.country ?? ''}
+                  className="mt-1.5 w-full rounded border border-[#E5E0D8] bg-white px-3 py-2 text-sm text-[#1A1A1B] focus:border-[#D4AF37] focus:outline-none"
+                />
+              </div>
             </div>
             <button
               type="submit"
