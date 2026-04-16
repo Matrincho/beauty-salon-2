@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
+import { canTransitionBooking } from '@/lib/admin/booking-transitions'
 import { z } from 'zod'
 
 const bookingStatusSchema = z.enum([
@@ -16,24 +17,6 @@ const bookingStatusSchema = z.enum([
 export type BookingActionResult =
   | { ok: true }
   | { ok: false; message: string }
-
-function canTransition(from: string, to: z.infer<typeof bookingStatusSchema>): boolean {
-  if (from === to) return true
-  if (from === 'cancelled' || from === 'completed') return false
-
-  switch (to) {
-    case 'confirmed':
-      return from === 'pending'
-    case 'completed':
-      return from === 'confirmed' || from === 'pending'
-    case 'cancelled':
-      return from === 'pending' || from === 'confirmed'
-    case 'no_show':
-      return from === 'confirmed'
-    default:
-      return false
-  }
-}
 
 export async function updateBookingStatusAction(
   bookingId: string,
@@ -59,7 +42,7 @@ export async function updateBookingStatusAction(
       return { ok: false, message: 'Резервацията не е намерена.' }
     }
 
-    if (!canTransition(row.status, parsed.data)) {
+    if (!canTransitionBooking(row.status, parsed.data)) {
       return {
         ok: false,
         message: 'Този преход на статус не е позволен за текущото състояние.',
@@ -67,6 +50,11 @@ export async function updateBookingStatusAction(
     }
 
     const patch: Record<string, unknown> = { status: parsed.data }
+
+    if (parsed.data === 'pending') {
+      patch.cancelled_at = null
+      patch.cancel_reason = null
+    }
 
     if (parsed.data === 'cancelled') {
       patch.cancelled_at = new Date().toISOString()

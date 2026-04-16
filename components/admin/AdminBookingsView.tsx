@@ -2,7 +2,19 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Eye, Loader2, Search } from 'lucide-react'
+import { endOfDay, endOfMonth, endOfWeek, startOfDay, startOfMonth, startOfWeek } from 'date-fns'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Calendar,
+  CalendarDays,
+  Clock,
+  Eye,
+  Loader2,
+  Search,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import type { AdminBookingRow } from '@/lib/admin/data'
 import { ACCOUNT_STATUS_LABELS, BOOKING_STATUS_LABELS, ROLE_LABELS } from '@/lib/admin/labels-bg'
@@ -26,10 +38,69 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import {
+  BOOKING_STATUS_SORT_ORDER,
+  canTransitionBooking,
+} from '@/lib/admin/booking-transitions'
 
 const BOOKING_STATUS_KEYS = Object.keys(BOOKING_STATUS_LABELS) as Array<
   keyof typeof BOOKING_STATUS_LABELS
 >
+
+type DatePreset = 'all' | 'today' | 'week' | 'month' | 'custom'
+
+const DATE_SEGMENTS: {
+  id: DatePreset
+  label: string
+  icon: LucideIcon | null
+}[] = [
+  { id: 'all', label: 'All', icon: null },
+  { id: 'today', label: 'Today', icon: Calendar },
+  { id: 'week', label: 'Week', icon: Clock },
+  { id: 'month', label: 'Month', icon: CalendarDays },
+  { id: 'custom', label: 'Custom', icon: Search },
+]
+
+function parseLocalYmd(s: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim())
+  if (!m) return null
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  const d = Number(m[3])
+  if (!y || mo < 1 || mo > 12 || d < 1 || d > 31) return null
+  return new Date(y, mo - 1, d)
+}
+
+function boundsForPreset(
+  preset: DatePreset,
+  customFrom: string,
+  customTo: string
+): { start: Date | null; end: Date | null } {
+  const now = new Date()
+  switch (preset) {
+    case 'all':
+      return { start: null, end: null }
+    case 'today':
+      return { start: startOfDay(now), end: endOfDay(now) }
+    case 'week':
+      return {
+        start: startOfWeek(now, { weekStartsOn: 1 }),
+        end: endOfWeek(now, { weekStartsOn: 1 }),
+      }
+    case 'month':
+      return { start: startOfMonth(now), end: endOfMonth(now) }
+    case 'custom': {
+      const a = parseLocalYmd(customFrom)
+      const b = parseLocalYmd(customTo)
+      if (!a || !b) return { start: null, end: null }
+      const lo = a <= b ? a : b
+      const hi = a <= b ? b : a
+      return { start: startOfDay(lo), end: endOfDay(hi) }
+    }
+    default:
+      return { start: null, end: null }
+  }
+}
 
 function one<T>(x: T | T[] | null | undefined): T | null {
   if (x == null) return null
@@ -50,6 +121,23 @@ function clientPhone(c: NonNullable<AdminBookingRow['client']>): string {
   return bits.join(' ') || '—'
 }
 
+function clientSortName(row: AdminBookingRow): string {
+  const c = one(row.client)
+  if (!c) return ''
+  return (profileDisplayName(c) || c.email || '').trim()
+}
+
+function formatPrice(amount: number, currency: string | undefined) {
+  return `${Number(amount).toFixed(2)} ${currency ?? 'BGN'}`
+}
+
+type SortKey = 'client' | 'service' | 'starts' | 'status' | 'price'
+
+function canSetStatus(current: string, next: string) {
+  if (current === next) return false
+  return canTransitionBooking(current, next)
+}
+
 export function AdminBookingsView({
   bookings,
   error,
@@ -65,11 +153,44 @@ export function AdminBookingsView({
   const [, startTransition] = useTransition()
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [clientSearch, setClientSearch] = useState('')
+  const [sessionTypeFilter, setSessionTypeFilter] = useState<string>('all')
+  const [datePreset, setDatePreset] = useState<DatePreset>('all')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({
+    key: 'starts',
+    dir: 'desc',
+  })
+
+  const sessionTypeOptions = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const b of bookings) {
+      const st = one(b.session_type)
+      if (st?.id) map.set(st.id, st.title)
+    }
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]))
+  }, [bookings])
+
+  const dateBounds = useMemo(
+    () => boundsForPreset(datePreset, customFrom, customTo),
+    [datePreset, customFrom, customTo]
+  )
 
   const filteredBookings = useMemo(() => {
     let list = bookings
     if (statusFilter !== 'all') {
       list = list.filter((b) => b.status === statusFilter)
+    }
+    if (sessionTypeFilter !== 'all') {
+      list = list.filter((b) => one(b.session_type)?.id === sessionTypeFilter)
+    }
+    if (dateBounds.start && dateBounds.end) {
+      const t0 = dateBounds.start.getTime()
+      const t1 = dateBounds.end.getTime()
+      list = list.filter((b) => {
+        const t = new Date(b.starts_at).getTime()
+        return t >= t0 && t <= t1
+      })
     }
     const q = clientSearch.trim().toLowerCase()
     if (q) {
@@ -87,7 +208,56 @@ export function AdminBookingsView({
       })
     }
     return list
-  }, [bookings, statusFilter, clientSearch])
+  }, [bookings, statusFilter, sessionTypeFilter, dateBounds, clientSearch])
+
+  const sortedBookings = useMemo(() => {
+    const list = [...filteredBookings]
+    const dir = sort.dir === 'asc' ? 1 : -1
+    const { key } = sort
+    list.sort((a, b) => {
+      let cmp = 0
+      switch (key) {
+        case 'client':
+          cmp = clientSortName(a).localeCompare(clientSortName(b), undefined, { sensitivity: 'base' })
+          break
+        case 'service': {
+          const na = one(a.session_type)?.title ?? ''
+          const nb = one(b.session_type)?.title ?? ''
+          cmp = na.localeCompare(nb, undefined, { sensitivity: 'base' })
+          break
+        }
+        case 'starts':
+          cmp = new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+          break
+        case 'status': {
+          const oa = BOOKING_STATUS_SORT_ORDER[a.status] ?? 99
+          const ob = BOOKING_STATUS_SORT_ORDER[b.status] ?? 99
+          cmp = oa - ob
+          if (cmp === 0) cmp = a.status.localeCompare(b.status)
+          break
+        }
+        case 'price':
+          cmp = Number(a.price_final) - Number(b.price_final)
+          break
+      }
+      return cmp * dir
+    })
+    return list
+  }, [filteredBookings, sort])
+
+  function toggleSort(nextKey: SortKey) {
+    setSort((s) =>
+      s.key === nextKey
+        ? { ...s, dir: s.dir === 'asc' ? 'desc' : 'asc' }
+        : { key: nextKey, dir: nextKey === 'starts' || nextKey === 'price' ? 'desc' : 'asc' }
+    )
+  }
+
+  function openDetail(row: AdminBookingRow) {
+    setDetail(row)
+    setCancelMode(false)
+    setCancelReason('')
+  }
 
   function closeDetail() {
     setDetail(null)
@@ -134,8 +304,8 @@ export function AdminBookingsView({
   return (
     <div className="admin-fade-in space-y-4">
       <p className="text-sm text-[#8C8074]">
-        Client, service, staff, and price in one place. Open a row for details and status
-        changes.
+        Client, service, staff, and price in one place. Click a row or use View for details and
+        status changes.
       </p>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
@@ -171,6 +341,91 @@ export function AdminBookingsView({
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-1">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-[#8C8074]">
+            Service
+          </p>
+          <Select value={sessionTypeFilter} onValueChange={setSessionTypeFilter}>
+            <SelectTrigger className="h-9 min-w-[12rem] border-[#E5E0D8] bg-white">
+              <SelectValue placeholder="All services" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All services</SelectItem>
+              {sessionTypeOptions.map(([id, title]) => (
+                <SelectItem key={id} value={id}>
+                  {title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-[10px] font-medium uppercase tracking-wide text-[#8C8074]">
+          Starts (date range)
+        </p>
+        <div
+          className="inline-flex max-w-full flex-wrap items-stretch gap-1 rounded-xl border border-[#E5E0D8] bg-[#F9F8F6] p-1 shadow-sm"
+          role="group"
+          aria-label="Filter by start date"
+        >
+          {DATE_SEGMENTS.map(({ id, label, icon: Icon }) => {
+            const active = datePreset === id
+            return (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={active}
+                aria-label={label}
+                onClick={() => setDatePreset(id)}
+                className={cn(
+                  'inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  active
+                    ? 'bg-[#D4AF37] text-white shadow-sm'
+                    : 'text-[#8C8074] hover:bg-white hover:text-[#1A1A1B]'
+                )}
+              >
+                {Icon ? <Icon className="size-4 shrink-0 opacity-95" aria-hidden /> : null}
+                {label}
+              </button>
+            )
+          })}
+        </div>
+        {datePreset === 'custom' ? (
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <label
+                htmlFor="booking-filter-from"
+                className="text-xs font-medium text-[#8C8074]"
+              >
+                From
+              </label>
+              <Input
+                id="booking-filter-from"
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="h-9 w-[11rem] border-[#E5E0D8] bg-white"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="booking-filter-to" className="text-xs font-medium text-[#8C8074]">
+                To
+              </label>
+              <Input
+                id="booking-filter-to"
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="h-9 w-[11rem] border-[#E5E0D8] bg-white"
+              />
+            </div>
+            {(!customFrom || !customTo) && (
+              <p className="text-xs text-[#8C8074]">Choose both dates to filter.</p>
+            )}
+          </div>
+        ) : null}
       </div>
       <p className="text-xs text-[#8C8074]">
         Master list · {bookings.length} booking{bookings.length === 1 ? '' : 's'} ·{' '}
@@ -178,31 +433,54 @@ export function AdminBookingsView({
       </p>
 
       <div className="overflow-x-auto rounded-xl border border-[#E5E0D8] bg-white shadow-sm">
-        <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[880px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-[#E5E0D8] bg-[#F9F8F6] text-xs uppercase tracking-wide text-[#8C8074]">
-              <th className="px-4 py-3 font-medium">Client</th>
-              <th className="px-4 py-3 font-medium">Service</th>
-              <th className="px-4 py-3 font-medium">Starts</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="w-28 px-4 py-3 font-medium">Actions</th>
+              {(
+                [
+                  { key: 'client' as const, label: 'Client' },
+                  { key: 'service' as const, label: 'Service' },
+                  { key: 'starts' as const, label: 'Starts' },
+                  { key: 'status' as const, label: 'Status' },
+                  { key: 'price' as const, label: 'Price' },
+                ] as const
+              ).map(({ key, label }) => {
+                const active = sort.key === key
+                const Icon = !active ? ArrowUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown
+                return (
+                  <th key={key} scope="col" className="px-4 py-3 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort(key)}
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-md text-left uppercase tracking-wide transition-colors hover:text-[#1A1A1B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/50"
+                      aria-label={`Sort by ${label}${active ? `, ${sort.dir === 'asc' ? 'ascending' : 'descending'}` : ''}`}
+                    >
+                      {label}
+                      <Icon className="size-3.5 shrink-0 opacity-70" aria-hidden />
+                    </button>
+                  </th>
+                )
+              })}
+              <th scope="col" className="w-28 px-4 py-3 font-medium">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {bookings.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-[#8C8074]">
+                <td colSpan={6} className="px-4 py-10 text-center text-[#8C8074]">
                   No bookings yet.
                 </td>
               </tr>
             ) : filteredBookings.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-[#8C8074]">
+                <td colSpan={6} className="px-4 py-10 text-center text-[#8C8074]">
                   No rows match your filters.
                 </td>
               </tr>
             ) : (
-              filteredBookings.map((row, i) => {
+              sortedBookings.map((row, i) => {
                 const client = one(row.client)
                 const st = one(row.session_type)
                 const cname = client
@@ -212,11 +490,21 @@ export function AdminBookingsView({
                 return (
                   <tr
                     key={row.id}
+                    tabIndex={0}
                     className={cn(
                       'border-b border-[#E5E0D8]/70 last:border-0',
-                      'animate-in fade-in slide-in-from-bottom-1 duration-300'
+                      'animate-in fade-in slide-in-from-bottom-1 duration-300',
+                      'cursor-pointer transition-colors hover:bg-[#F9F8F6]/90 focus-visible:bg-[#F9F8F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/50'
                     )}
                     style={{ animationDelay: `${Math.min(i, 14) * 30}ms` }}
+                    aria-label={`View booking for ${cname}`}
+                    onClick={() => openDetail(row)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        openDetail(row)
+                      }
+                    }}
                   >
                     <td className="px-4 py-3 font-medium text-[#1A1A1B]">{cname}</td>
                     <td className="px-4 py-3 text-[#1A1A1B]/90">{st?.title ?? '—'}</td>
@@ -226,16 +514,18 @@ export function AdminBookingsView({
                         {BOOKING_STATUS_LABELS[row.status] ?? row.status}
                       </span>
                     </td>
+                    <td className="px-4 py-3 font-medium tabular-nums text-[#1A1A1B]">
+                      {formatPrice(row.price_final, one(row.session_type)?.currency)}
+                    </td>
                     <td className="px-4 py-3">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         className="border-[#E5E0D8] bg-white hover:bg-[#F9F8F6]"
-                        onClick={() => {
-                          setDetail(row)
-                          setCancelMode(false)
-                          setCancelReason('')
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openDetail(row)
                         }}
                       >
                         <Eye className="mr-1 size-3.5" aria-hidden />
@@ -382,49 +672,44 @@ export function AdminBookingsView({
                     <Button type="button" variant="outline" onClick={closeDetail}>
                       Close
                     </Button>
-                    {detail.status === 'pending' ? (
-                      <>
-                        <Button
-                          type="button"
-                          className="bg-[#1A1A1B] text-[#F9F8F6] hover:bg-[#1A1A1B]/90"
-                          onClick={() => runUpdate(detail.id, 'confirmed')}
-                        >
-                          Confirm
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          onClick={() => setCancelMode(true)}
-                        >
-                          Cancel booking
-                        </Button>
-                      </>
-                    ) : null}
-                    {detail.status === 'confirmed' ? (
-                      <>
-                        <Button
-                          type="button"
-                          className="bg-[#D4AF37] text-[#1A1A1B] hover:bg-[#c9a227]"
-                          onClick={() => runUpdate(detail.id, 'completed')}
-                        >
-                          Complete
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => runUpdate(detail.id, 'no_show')}
-                        >
-                          No-show
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          onClick={() => setCancelMode(true)}
-                        >
-                          Cancel booking
-                        </Button>
-                      </>
-                    ) : null}
+                    <Button
+                      type="button"
+                      className={cn(
+                        'border border-[#1A1A1B] bg-[#1A1A1B] text-[#F9F8F6] shadow-sm transition-colors',
+                        'hover:border-[#D4AF37] hover:bg-[#D4AF37] hover:text-[#1A1A1B]',
+                        'disabled:opacity-50 disabled:hover:border-[#1A1A1B] disabled:hover:bg-[#1A1A1B] disabled:hover:text-[#F9F8F6]'
+                      )}
+                      disabled={!canSetStatus(detail.status, 'confirmed')}
+                      onClick={() => runUpdate(detail.id, 'confirmed')}
+                    >
+                      Confirm
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn(
+                        'border-[#E5E0D8] bg-white text-[#1A1A1B] shadow-sm transition-colors',
+                        'hover:border-[#D4AF37] hover:bg-[#FFFCF8] hover:text-[#1A1A1B]',
+                        'disabled:opacity-50 disabled:hover:border-[#E5E0D8] disabled:hover:bg-white'
+                      )}
+                      disabled={!canSetStatus(detail.status, 'pending')}
+                      onClick={() => runUpdate(detail.id, 'pending')}
+                    >
+                      Pending
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className={cn(
+                        'shadow-sm transition-colors',
+                        'hover:bg-red-700 hover:shadow-md',
+                        'disabled:opacity-50 disabled:hover:shadow-none'
+                      )}
+                      disabled={!canSetStatus(detail.status, 'cancelled')}
+                      onClick={() => setCancelMode(true)}
+                    >
+                      Cancel
+                    </Button>
                   </>
                 ) : (
                   <>
